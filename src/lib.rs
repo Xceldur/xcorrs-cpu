@@ -5,3 +5,4 @@ pub mod fast_xcorr;
 pub mod scoring_result;
 // Various utilities
 pub mod utils;
+pub mod preprocessed_spectrum;

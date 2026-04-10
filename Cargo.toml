@@ -1,7 +1,7 @@
 [package]
 name = "xcorrrs"
 version = "1.2.0"
-edition = "2021"
+edition = "2024"
 description = "Reimplmenmentation of Comet's xcorr algorithm."
 repository = "https://github.com/medbioinf/xcorrrs"
 homepage = "https://github.com/medbioinf/xcorrrs"
@@ -15,12 +15,17 @@ exclude = [
     "/.vscode",
 ]
 
+[[bench]]
+name = "preprocessing_bench"
+harness = false
+
 [dependencies]
 ndarray = "0.16.1"
 rustyms = "0.10.0"
-serde = "1.0.219"
-thiserror = "2.0.12"
-
+serde = "1.0.228"
+thiserror = "2.0.18"
+rand = "0.10.0"
+rayon = "1.11.0"
 
 [dev-dependencies]
 dihardts_omicstools = "3.1.0"
@@ -28,4 +33,6 @@ itertools = "0.14.0"
 ndarray-stats = "0.6.0"
 plotly = { version = "0.12.1", features = ["plotly_ndarray"]}
 polars = { version = "0.49.1", features = ["decompress", "ndarray", "parquet"] }
-rayon = "1.10.0"
+criterion = "0.8.2" #is used for benchmark therefore do not remove
+
+
