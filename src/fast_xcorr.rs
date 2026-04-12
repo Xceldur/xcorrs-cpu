@@ -124,6 +124,7 @@ impl FastXcorr<'_> {
         let theoretical_mz = Self::create_threoretical_mz(&theoretical_fragments);
         let ions_total = theoretical_mz.len();
 
+        //TODO: skip calucation if sp_score is disabled...
         let ions_matched = Self::match_ions_sp_score_based(
             &theoretical_mz,
             &self.spectrum.sp_matrix,

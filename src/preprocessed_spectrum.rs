@@ -87,7 +87,11 @@ impl PreprocessedSpectrum {
             .iter()
             .fold(f64::NEG_INFINITY, |a, &b| a.max(b));
 
-        let sp_matrix = Self::build_sparse_sp_score(&binned_experimental_spectrum, max_intensity_sqrt);
+        let sp_matrix = Self::build_sparse_sp_score(
+            &binned_experimental_spectrum,
+            max_intensity_sqrt,
+            config.sp_matrix_enable,
+        );
 
         // Normalization of the binned experimental spectrum
         let binned_normalized_experimental_spectrum = Self::experimental_spectrum_normalization(
@@ -136,12 +140,13 @@ impl PreprocessedSpectrum {
     fn build_sparse_sp_score(
         binned_theoretical_spectrum: &Array1<f64>,
         max_intensity_sqrt: f64,
+        sp_matrix_enable: bool,
     ) -> Vec<Option<Vec<f64>>> {
         let matrix_size = binned_theoretical_spectrum.len() / SP_MATRIX_SIZE + 1;
         let mut sparse: Vec<Option<Vec<f64>>> = vec![None; matrix_size];
 
-        if max_intensity_sqrt <= 0.0 {
-            return sparse;
+        if max_intensity_sqrt <= 0.0 || !sp_matrix_enable {
+            return sparse; //TODO: Maybe replace with Vec::new() if that still compatible
         }
 
         for i in 0..binned_theoretical_spectrum.len() {

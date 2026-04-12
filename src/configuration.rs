@@ -75,6 +75,8 @@ pub struct Configuration {
     pub use_neutral_loss_ions: bool,
     /// Same as: https://uwpr.github.io/Comet/parameters/parameters_202502/clear_mz_range.html
     pub clear_mz_range: Option<(f64, f64)>,
+    // disable sp matrix calculation
+    pub sp_matrix_enable: bool,
 }
 
 impl Default for Configuration {
@@ -89,6 +91,7 @@ impl Default for Configuration {
             ions: vec![Ion::B, Ion::Y],
             use_neutral_loss_ions: false,
             clear_mz_range: None,
+            sp_matrix_enable: true
         }
     }
 }
