@@ -1,21 +1,11 @@
+mod benchmark_helper;
+
 use criterion::{criterion_group, criterion_main, Criterion, BatchSize};
 use ndarray::Array1;
 use rand::{RngExt, SeedableRng};
 use rand::rngs::StdRng;
 use xcorrrs::configuration::{Configuration, FinalizedConfiguration};
 use xcorrrs::preprocessed_spectrum::PreprocessedSpectrum;
-
-//TODO: Maybe we need to refine spectrum generation... Uniform might not be representative.
-fn generate_random_spectrum(rng: &mut StdRng, num_peaks: usize) -> (Array1<f64>, Array1<f64>) {
-    let mut mz_vec: Vec<f64> = (0..num_peaks).map(|_| rng
-        .random_range(100.0..2000.0)).collect();
-    mz_vec.sort_unstable_by(|a, b| a.partial_cmp(b).unwrap());
-
-    let intensity_vec: Vec<f64> = (0..num_peaks).map(|_| rng
-        .random_range(0.0..100_000.0)).collect();
-
-    (Array1::from_vec(mz_vec), Array1::from_vec(intensity_vec))
-}
 
 fn bench_process_spectra(c: &mut Criterion) {
     let base = Configuration {
@@ -32,14 +22,14 @@ fn bench_process_spectra(c: &mut Criterion) {
         ..base
     }.into();
 
-    //TODO: This might measure the memory bandwidth instead of algorithmic performance
+    //TODO: This might measure the memory bandwidth instead of algorithmic performance?
     //therefore we should maybe reduce the amout of spectra?
     let num_spectra = 100_000;
     let num_peaks_per_spectrum = 500;
     let mut rng = StdRng::seed_from_u64(42);
 
     let spectra: Vec<(Array1<f64>, Array1<f64>)> = (0..num_spectra)
-        .map(|_| generate_random_spectrum(&mut rng, num_peaks_per_spectrum))
+        .map(|_| benchmark_helper::generate_random_spectrum(&mut rng, num_peaks_per_spectrum, 800.0))
         .collect();
 
     let mut spectra_iter = spectra.iter().cycle();
