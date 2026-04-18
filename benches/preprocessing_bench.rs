@@ -2,7 +2,7 @@ mod benchmark_helper;
 
 use criterion::{criterion_group, criterion_main, Criterion, BatchSize};
 use ndarray::Array1;
-use rand::{RngExt, SeedableRng};
+use rand::{SeedableRng};
 use rand::rngs::StdRng;
 use xcorrrs::configuration::{Configuration, FinalizedConfiguration};
 use xcorrrs::preprocessed_spectrum::PreprocessedSpectrum;

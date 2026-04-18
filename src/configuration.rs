@@ -157,7 +157,7 @@ impl From<Configuration> for FinalizedConfiguration {
                 NeutralLoss::Loss(molecular_formula!(H 2 O 1)),
                 NeutralLoss::Loss(molecular_formula!(N 1 H 3)),
             ]);
-            fragmentation_model.b = y_ions
+            fragmentation_model.y = y_ions //Fixed a bug? (Probably)
         }
 
         Self {
