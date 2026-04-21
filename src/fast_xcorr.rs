@@ -110,6 +110,25 @@ impl FastXcorr<'_> {
             .collect::<Array1<f64>>()
     }
 
+    /** extracted from xcorr_peptide to have more fine-grained profiling in benchmark */
+    pub fn prepare_theoretical_peptide(&self, peptide: &str) -> Result<(f64, f64, Array1<f64>, usize), Error> {
+        let peptide = CompoundPeptidoformIon::pro_forma(peptide, None)
+            .map_err(Error::InvalidPeptideSequence)?;
+
+        let (min_theoretical_mass, max_theoretical_mass) =
+            match peptide.formulas().mass_bounds().into_option() {
+                Some((min, max)) => (min.monoisotopic_mass().value, max.monoisotopic_mass().value),
+                None => (-1.0, -1.0),
+            };
+
+        let theoretical_fragments = self.create_theoretical_fragments(&peptide)?;
+        let theoretical_mz = Self::create_threoretical_mz(&theoretical_fragments);
+        let ions_total = theoretical_mz.len();
+
+
+        Ok((min_theoretical_mass, max_theoretical_mass, theoretical_mz, ions_total))
+    }
+
     pub fn xcorr_peptide(&self, peptide: &str) -> Result<ScoringResult, Error> {
         let peptide = CompoundPeptidoformIon::pro_forma(peptide, None)
             .map_err(Error::InvalidPeptideSequence)?;
@@ -241,6 +260,83 @@ mod tests {
         let scoring = xcorr.xcorr_peptide("DIGSETK").unwrap();
         println!("{scoring}");
         assert_eq!((scoring.score * 100.0).round() / 100.0, 2.92);
+    }
+
+    // extract one iteration from test_xcorr to run in a minimal test case. Used as sanity check
+    // for benchmark
+    #[test]
+    #[ignore = "only used to sanity check the benchmark"]
+    pub fn sanity_check_benchmark() {
+        let (mz_array, intensity_array) = get_spectrum("12745");
+
+        let config: FinalizedConfiguration = Configuration {
+            use_flanking_peaks: true,
+            max_fragment_charge: 5,
+            ..Configuration::default()
+        }
+            .into();
+
+        let fast_xcorr = FastXcorr::new(&config, (&mz_array, &intensity_array), 2).unwrap();
+        let score = fast_xcorr.xcorr_peptide("GPISMTK").unwrap();
+        println!("{}", score.score)
+    }
+
+    /** implemented with data from test_xcorr. match one experimental spectrum against all
+     theoretical spectrums. Useful to benchmark/profile the xcorrrs-algorithm and compare which
+     parts of its implementation use how much time. The 3 parts we want to compare are:
+     - PreprocessedSpectrum::process
+     - fast_xcorr.prepare_theoretical_peptide
+     - FastXcorr::xcorr_spectra
+    Can be started with: RUSTFLAGS="-C force-frame-pointers=yes" cargo flamegraph --profile profiling --no-inline --unit-test -- fast_xcorr::tests::benchmark */
+    #[test]
+    #[inline(never)]
+    pub fn benchmark() {
+        let test_data_df = read_test_data();
+        let all_peptides : Vec<String> = (0..test_data_df.height())
+            .into_par_iter()
+            .map(|idx| {
+                let proforma_peptide = test_data_df["proforma_peptide"]
+                    .str()
+                    .unwrap()
+                    .get(idx)
+                    .unwrap();
+                proforma_peptide.to_string()
+            })
+            .collect();
+        let (mz_array, intensity_array) = get_spectrum("12745");
+
+        // execute this code in a loop like for _i in 0..100 {} to ensure small calls are hit aswell
+        benchmark_internal((&mz_array, &intensity_array), &all_peptides[0..50]);
+
+    }
+
+    #[inline(never)]
+    fn benchmark_internal(experimental_spectrum: (&Array1<f64>, &Array1<f64>), all_peptides: &[String]) {
+        let config: FinalizedConfiguration = Configuration {
+            use_flanking_peaks: true,
+            max_fragment_charge: 5,
+            ..Configuration::default()
+        }
+            .into();
+
+        let spectrum = PreprocessedSpectrum::process(&config, experimental_spectrum).unwrap();
+        let empty_spec: PreprocessedSpectrum = PreprocessedSpectrum {
+            sp_matrix: vec![],
+            preprocessed_experimental_spectrum: Default::default(),
+        };
+
+        let fast_xcorr = FastXcorr {
+            config: &config,
+            fragment_charge: 1,
+            spectrum: empty_spec,
+        };
+
+        for peptide in all_peptides {
+            let (_min_theoretical_mass, _max_theoretical_mass, theoretical_mz, _ions_total) =
+                fast_xcorr.prepare_theoretical_peptide(peptide).unwrap();
+
+            println!("{}: {}", peptide, FastXcorr::xcorr_spectra(&theoretical_mz, &spectrum.preprocessed_experimental_spectrum, config.bin_size, config.bin_offset));
+        }
     }
 
     // Test xcorr implementations against high-res MS data
