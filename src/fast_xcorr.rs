@@ -287,8 +287,9 @@ mod tests {
      - PreprocessedSpectrum::process
      - fast_xcorr.prepare_theoretical_peptide
      - FastXcorr::xcorr_spectra
-    Can be started with: RUSTFLAGS="-C force-frame-pointers=yes" cargo flamegraph --profile profiling --no-inline --unit-test -- fast_xcorr::tests::benchmark */
+    Can be started with: RUSTFLAGS="-C force-frame-pointers=yes" cargo flamegraph --profile profiling --no-inline --unit-test -- fast_xcorr::tests::benchmark --ignored */
     #[test]
+    #[ignore]
     #[inline(never)]
     pub fn benchmark() {
         let test_data_df = read_test_data();
