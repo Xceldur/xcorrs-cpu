@@ -172,7 +172,7 @@ impl FastXcorr<'_> {
 mod tests {
     use super::*;
     use std::{env, io::Write};
-
+    use std::fs::File;
     use itertools::multiunzip;
     use ndarray_stats::DeviationExt;
     use polars::prelude::*;
@@ -281,6 +281,24 @@ mod tests {
         println!("{}", score.score)
     }
 
+    #[test]
+    pub fn vector_to_tsv() {
+        let all_peptides = peptides_from_test_data();
+
+        // Create output file
+        let file = File::create("test_files/all_proforma_testdata.tsv").unwrap();
+
+        let column = Column::new("proforma".into(), all_peptides);
+
+        let mut df: DataFrame = DataFrame::new(vec!(column)).unwrap();
+
+        // Write as TSV (CSV with tab delimiter)
+        CsvWriter::new(file)
+            .with_separator(b'\t')
+            .include_header(true)
+            .finish(&mut df).unwrap();
+    }
+
     /** implemented with data from test_xcorr. match one experimental spectrum against all
      theoretical spectrums. Useful to benchmark/profile the xcorrrs-algorithm and compare which
      parts of its implementation use how much time. The 3 parts we want to compare are:
@@ -292,8 +310,17 @@ mod tests {
     #[ignore]
     #[inline(never)]
     pub fn benchmark() {
+        let all_peptides = peptides_from_test_data();
+        let (mz_array, intensity_array) = get_spectrum("12745");
+
+        // execute this code in a loop like for _i in 0..100 {} to ensure small calls are hit aswell
+        benchmark_internal((&mz_array, &intensity_array), &all_peptides);
+
+    }
+
+    fn peptides_from_test_data() -> Vec<String> {
         let test_data_df = read_test_data();
-        let all_peptides : Vec<String> = (0..test_data_df.height())
+        let all_peptides: Vec<String> = (0..test_data_df.height())
             .into_par_iter()
             .map(|idx| {
                 let proforma_peptide = test_data_df["proforma_peptide"]
@@ -304,11 +331,7 @@ mod tests {
                 proforma_peptide.to_string()
             })
             .collect();
-        let (mz_array, intensity_array) = get_spectrum("12745");
-
-        // execute this code in a loop like for _i in 0..100 {} to ensure small calls are hit aswell
-        benchmark_internal((&mz_array, &intensity_array), &all_peptides[0..50]);
-
+        all_peptides
     }
 
     #[inline(never)]
