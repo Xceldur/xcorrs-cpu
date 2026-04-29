@@ -43,6 +43,21 @@ impl FastXcorr<'_> {
         })
     }
 
+    pub fn new_without_init(
+        config: &FinalizedConfiguration,
+        fragment_charge: usize,) -> FastXcorr {
+        let empty_spec: PreprocessedSpectrum = PreprocessedSpectrum {
+            sp_matrix: vec![],
+            preprocessed_experimental_spectrum: Default::default(),
+        };
+
+        FastXcorr {
+            config,
+            fragment_charge,
+            spectrum: empty_spec,
+        }
+    }
+
     pub fn xcorr_spectra(
         theoretical_spectrum: &Array1<f64>,
         preprocessed_experimental_spectrum: &Array1<f64>,
@@ -345,16 +360,9 @@ mod tests {
             .into();
 
         let spectrum = PreprocessedSpectrum::process(&config, experimental_spectrum).unwrap();
-        let empty_spec: PreprocessedSpectrum = PreprocessedSpectrum {
-            sp_matrix: vec![],
-            preprocessed_experimental_spectrum: Default::default(),
-        };
+        let fast_xcorr = FastXcorr::new_without_init(&config, 1);
 
-        let fast_xcorr = FastXcorr {
-            config: &config,
-            fragment_charge: 1,
-            spectrum: empty_spec,
-        };
+
 
         for peptide in all_peptides {
             let (_min_theoretical_mass, _max_theoretical_mass, theoretical_mz, _ions_total) =
