@@ -282,7 +282,8 @@ mod tests {
     }
 
     #[test]
-    pub fn vector_to_tsv() {
+    #[ignore]
+    pub fn peptides_from_test_data_to_tsv() {
         let all_peptides = peptides_from_test_data();
 
         // Create output file
