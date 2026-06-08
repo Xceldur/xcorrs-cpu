@@ -6,3 +6,4 @@ pub mod scoring_result;
 // Various utilities
 pub mod utils;
 pub mod preprocessed_spectrum;
+pub mod preprocessed_spectrum_f32;
