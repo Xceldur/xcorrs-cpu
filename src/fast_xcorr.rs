@@ -194,10 +194,8 @@ mod tests {
     use rayon::prelude::*;
     use rustyms::MassMode;
 
-    use crate::{
-        configuration::{Configuration, FinalizedConfiguration},
-        utils::tests::{get_spectrum, read_test_data},
-    };
+    use crate::{configuration::{Configuration, FinalizedConfiguration}, utils::tests::{get_spectrum}};
+    use crate::utils::read_test_data;
 
     /// Tests the xcorr calculation against data provided by J. Eng
     #[test]

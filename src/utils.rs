@@ -1,3 +1,7 @@
+use std::path::PathBuf;
+use polars::datatypes::DataType;
+use polars::frame::DataFrame;
+use polars::prelude::{CsvParseOptions, CsvReadOptions, NamedFrom, SerReader, Series, SortMultipleOptions};
 use rustyms::{
     system::{e, usize::Charge},
     CompoundPeptidoformIon,
@@ -62,6 +66,67 @@ pub fn create_theoretical_fragments(
     Ok(fragments)
 }
 
+/// Reads the test data from a TSV file and processes it to include a new column for proforma peptides.
+/// TEST_NUMBER_OF_PSMS environment variable limits to the X best scored PSMs.
+///
+pub fn read_test_data() -> DataFrame {
+    // Read the Comet results from a TSV file
+    let mut comet_df = CsvReadOptions::default()
+        .with_has_header(true)
+        .with_parse_options(
+            CsvParseOptions::default()
+                .with_separator(b'\t')
+                .with_comment_prefix(Some("#")),
+        )
+        .try_into_reader_with_file_path(Some(PathBuf::from(
+            format!("{}/test_files/LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_01.tsv", env!("CARGO_MANIFEST_DIR")),
+        )))
+        .unwrap()
+        .finish()
+        .unwrap();
+
+    // Sort by xcorr in descending order
+    comet_df
+        .sort_in_place(
+            ["xcorr"],
+            SortMultipleOptions::default().with_order_descending(true),
+        )
+        .unwrap();
+
+    // Reduce the number of PSMs if the environment variable is set
+    let mut comet_df = match std::env::var("TEST_NUMBER_OF_PSMS") {
+        Ok(number_of_psms) => comet_df.slice(0, number_of_psms.parse::<usize>().unwrap()),
+        Err(_) => comet_df,
+    };
+
+    // Create the proforma peptides column
+    let modified_peptide = comet_df.column("modified_peptide").unwrap().str().unwrap();
+    let profoma_peptides = modified_peptide
+        .iter()
+        .filter_map(|s| {
+            s.map(|s| {
+                let mut proform_string = s[2..s.len() - 2]
+                    .to_string()
+                    .replace("[15.9949]", "[+15.9949]");
+                if proform_string.contains("C") {
+                    proform_string = proform_string.replace("C", "C[+57.02146]");
+                }
+                proform_string
+            })
+        })
+        .collect::<Vec<String>>();
+
+    comet_df
+        .with_column(
+            Series::new("proforma_peptide".into(), profoma_peptides)
+                .cast(&DataType::String)
+                .unwrap(),
+        )
+        .unwrap();
+
+    comet_df
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::configuration::{Configuration, FinalizedConfiguration};
@@ -93,66 +158,6 @@ pub mod tests {
         assert!(charge_states.iter().all(|x| *x));
     }
 
-    /// Reads the test data from a TSV file and processes it to include a new column for proforma peptides.
-    /// TEST_NUMBER_OF_PSMS environment variable limits to the X best scored PSMs.
-    ///
-    pub fn read_test_data() -> DataFrame {
-        // Read the Comet results from a TSV file
-        let mut comet_df = CsvReadOptions::default()
-            .with_has_header(true)
-            .with_parse_options(
-                CsvParseOptions::default()
-                    .with_separator(b'\t')
-                    .with_comment_prefix(Some("#")),
-            )
-            .try_into_reader_with_file_path(Some(PathBuf::from(
-                "test_files/LFQ_Orbitrap_DDA_Condition_A_Sample_Alpha_01.tsv",
-            )))
-            .unwrap()
-            .finish()
-            .unwrap();
-
-        // Sort by xcorr in descending order
-        comet_df
-            .sort_in_place(
-                ["xcorr"],
-                SortMultipleOptions::default().with_order_descending(true),
-            )
-            .unwrap();
-
-        // Reduce the number of PSMs if the environment variable is set
-        let mut comet_df = match std::env::var("TEST_NUMBER_OF_PSMS") {
-            Ok(number_of_psms) => comet_df.slice(0, number_of_psms.parse::<usize>().unwrap()),
-            Err(_) => comet_df,
-        };
-
-        // Create the proforma peptides column
-        let modified_peptide = comet_df.column("modified_peptide").unwrap().str().unwrap();
-        let profoma_peptides = modified_peptide
-            .iter()
-            .filter_map(|s| {
-                s.map(|s| {
-                    let mut proform_string = s[2..s.len() - 2]
-                        .to_string()
-                        .replace("[15.9949]", "[+15.9949]");
-                    if proform_string.contains("C") {
-                        proform_string = proform_string.replace("C", "C[+57.02146]");
-                    }
-                    proform_string
-                })
-            })
-            .collect::<Vec<String>>();
-
-        comet_df
-            .with_column(
-                Series::new("proforma_peptide".into(), profoma_peptides)
-                    .cast(&DataType::String)
-                    .unwrap(),
-            )
-            .unwrap();
-
-        comet_df
-    }
 
     /// Reads a spectrum from a Parquet file.
     ///

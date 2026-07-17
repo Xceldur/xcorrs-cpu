@@ -27,13 +27,13 @@ thiserror = "2.0.18"
 rand = "0.10.0"
 rayon = "1.11.0"
 rand_distr = "0.6.0"
+polars = { version = "0.49.1", features = ["decompress", "ndarray", "parquet"] }
 
 [dev-dependencies]
 dihardts_omicstools = "3.1.0"
 itertools = "0.14.0"
 ndarray-stats = "0.6.0"
 plotly = { version = "0.12.1", features = ["plotly_ndarray"]}
-polars = { version = "0.49.1", features = ["decompress", "ndarray", "parquet"] }
 criterion = "0.8.2" #is used for benchmark therefore do not remove
 
 
